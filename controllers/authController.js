@@ -38,7 +38,7 @@ exports.login = async (req, res) => {
 
 exports.register = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, username, firstName, lastName } = req.body;
 
     if (!email || !password) {
       return res
@@ -47,16 +47,24 @@ exports.register = async (req, res) => {
     }
 
     let user = await Login.findOne({ email });
-
+    let pwd = await Login.findOne({ password });
     if (user) {
       return res
         .status(400)
         .json({ success: false, message: "Email already exists" });
     }
+    if (pwd) {
+      return res
+        .status(400)
+        .json({ success: false, message: "password already exists" });
+    }
 
     user = new Login({
       email,
       password,
+      username,
+      firstName,
+      lastName,
     });
 
     await user.save();
