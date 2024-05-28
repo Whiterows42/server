@@ -1,14 +1,24 @@
 const express = require("express");
+const connectDB = require("./config/db");
+const authRoutes = require("./routes/authRoutes");
+require("dotenv").config();
+
 const app = express();
-const port = 3000;
+const port = process.env.PORT || 3000;
+
+// Middleware to parse JSON requests
+app.use(express.json());
+
+// Connect to the database
+connectDB();
+
+// Routes
+app.use("/api/auth", authRoutes);
 
 app.get("/", (req, res) => {
   res.send("Hello World!");
 });
 
-app.post("/api",(req,res)=>{
-    res.send("post request")
-})
 app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`);
+  console.log(`Server running on port ${port}`);
 });
