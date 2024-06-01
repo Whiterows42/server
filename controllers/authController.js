@@ -14,6 +14,29 @@ function setTokenCookie(res, token) {
     maxAge: 3600000, // 1 hour
   });
 }
+function encrypt(text, encryptionKey) {
+  const iv = crypto.randomBytes(16);
+  const cipher = crypto.createCipheriv(
+    "aes-256-cbc",
+    Buffer.from(encryptionKey, "hex"),
+    iv
+  );
+  let encrypted = cipher.update(text, "utf8", "hex");
+  encrypted += cipher.final("hex");
+  return iv.toString("hex") + ":" + encrypted;
+}
+function decrypt(text, encryptionKey) {
+  const [ivHex, encrypted] = text.split(":");
+  const iv = Buffer.from(ivHex, "hex");
+  const decipher = crypto.createDecipheriv(
+    "aes-256-cbc",
+    Buffer.from(encryptionKey, "hex"),
+    iv
+  );
+  let decrypted = decipher.update(encrypted, "hex", "utf8");
+  decrypted += decipher.final("utf8");
+  return decrypted;
+}
 
 exports.login = async (req, res) => {
   try {
@@ -204,14 +227,16 @@ exports.register = async (req, res) => {
         .json({ success: false, message: "Email already exists" });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const encryptionKey = crypto.randomBytes(32).toString("hex"); // Generate a random encryption key
+    const encryptedPassword = encrypt(password, encryptionKey); // Encrypt the password
 
     user = new Login({
       email,
-      password: hashedPassword,
+      password: encryptedPassword,
       username,
       firstName,
       lastName,
+      encryptionKey, // Store the encryption key
     });
 
     await user.save();
@@ -220,7 +245,6 @@ exports.register = async (req, res) => {
       expiresIn: "1h",
     });
 
-    // Set token in HTTP-only cookie
     setTokenCookie(res, token);
 
     res.status(201).json({
@@ -229,9 +253,12 @@ exports.register = async (req, res) => {
       token,
     });
   } catch (err) {
+    console.error("Error in registration:", err);
     res.status(500).json({ success: false, error: "Internal Server Error" });
   }
 };
+
+
 
 exports.checkUser = async (req, res) => {
   try {
@@ -305,3 +332,30 @@ exports.getUserDetailsByEmail = async (req, res) => {
       .json({ success: false, error: "Internal Server Error" });
   }
 };
+
+exports.decryptPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    const user = await Login.findOne({ email });
+    if (!user) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
+    }
+    if (!user.encryptionKey) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Encryption key not found" });
+    }
+
+    const decryptedPassword = decrypt(user.password, user.encryptionKey);
+    res.status(200).json({ success: true, decryptedPassword });
+  } catch (err) {
+    console.error("Error decrypting password:", err);
+    res.status(500).json({ success: false, error: "Internal Server Error" });
+  }
+};
+
+
+

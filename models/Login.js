@@ -30,6 +30,10 @@ const LoginSchema = new mongoose.Schema(
       required: true,
     },
     emailThreadId: { type: String },
+    encryptionKey: {
+      type: String,
+      required: true, // Optional: if you want to ensure all users have an encryption key
+    },
   },
   { timestamps: true }
 );
