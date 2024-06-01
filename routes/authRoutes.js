@@ -5,7 +5,8 @@ const {
   checkUser,
   deleteAllUsers,
   verifyOtp,
-  deleteAllOtps, // Add this line
+  deleteAllOtps,
+  getUserDetailsByEmail, // Add this line
 } = require("../controllers/authController");
 const { getUserData } = require("../controllers/userController");
 const authMiddleware = require("../middleware/authMiddleware");
@@ -20,5 +21,8 @@ router.post("/verify-otp", verifyOtp);
 router.delete("/delete-all-users", authMiddleware, deleteAllUsers);
 router.delete("/delete-all-otps", deleteAllOtps); // Add this route
 router.get("/userData", authMiddleware, getUserData);
+// Define route for retrieving user details by email
+router.post("/userdetails",  getUserDetailsByEmail);
+
 
 module.exports = router;
