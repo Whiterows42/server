@@ -14,29 +14,6 @@ function setTokenCookie(res, token) {
     maxAge: 3600000, // 1 hour
   });
 }
-function encrypt(text, encryptionKey) {
-  const iv = crypto.randomBytes(16);
-  const cipher = crypto.createCipheriv(
-    "aes-256-cbc",
-    Buffer.from(encryptionKey, "hex"),
-    iv
-  );
-  let encrypted = cipher.update(text, "utf8", "hex");
-  encrypted += cipher.final("hex");
-  return iv.toString("hex") + ":" + encrypted;
-}
-function decrypt(text, encryptionKey) {
-  const [ivHex, encrypted] = text.split(":");
-  const iv = Buffer.from(ivHex, "hex");
-  const decipher = crypto.createDecipheriv(
-    "aes-256-cbc",
-    Buffer.from(encryptionKey, "hex"),
-    iv
-  );
-  let decrypted = decipher.update(encrypted, "hex", "utf8");
-  decrypted += decipher.final("utf8");
-  return decrypted;
-}
 
 exports.login = async (req, res) => {
   try {
@@ -56,7 +33,9 @@ exports.login = async (req, res) => {
         .json({ success: false, message: "User not found" });
     }
 
+    // Compare the hashed password from the database with the provided password
     const isPasswordValid = await bcrypt.compare(password, user.password);
+
     if (!isPasswordValid) {
       return res
         .status(401)
@@ -64,7 +43,7 @@ exports.login = async (req, res) => {
     }
 
     // Generate OTP
-    const otp = crypto.randomInt(100000, 999999).toString();
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const otpExpiration = Date.now() + 10 * 60 * 1000; // OTP valid for 10 minutes
 
     await Otp.create({ email, otp, expiresAt: otpExpiration });
@@ -160,7 +139,6 @@ exports.login = async (req, res) => {
   }
 };
 
-
 exports.verifyOtp = async (req, res) => {
   try {
     const { email, otp } = req.body;
@@ -209,17 +187,18 @@ exports.verifyOtp = async (req, res) => {
   }
 };
 
-
 exports.register = async (req, res) => {
   try {
     const { email, password, username, firstName, lastName } = req.body;
 
+    // Check if email and password are provided
     if (!email || !password) {
       return res
         .status(400)
         .json({ success: false, message: "Email and password are required" });
     }
 
+    // Check if the email already exists
     let user = await Login.findOne({ email });
     if (user) {
       return res
@@ -227,26 +206,30 @@ exports.register = async (req, res) => {
         .json({ success: false, message: "Email already exists" });
     }
 
-    const encryptionKey = crypto.randomBytes(32).toString("hex"); // Generate a random encryption key
-    const encryptedPassword = encrypt(password, encryptionKey); // Encrypt the password
+    // Hash the password
+    const hashedPassword = await bcrypt.hash(password, 10);
 
+    // Create a new user
     user = new Login({
       email,
-      password: encryptedPassword,
+      password: hashedPassword,
       username,
       firstName,
       lastName,
-      encryptionKey, // Store the encryption key
     });
 
+    // Save the user to the database
     await user.save();
 
+    // Generate JWT token
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
       expiresIn: "1h",
     });
 
+    // Set token in HTTP-only cookie
     setTokenCookie(res, token);
 
+    // Return success response with token
     res.status(201).json({
       success: true,
       message: "User created successfully",
@@ -257,8 +240,6 @@ exports.register = async (req, res) => {
     res.status(500).json({ success: false, error: "Internal Server Error" });
   }
 };
-
-
 
 exports.checkUser = async (req, res) => {
   try {
@@ -296,11 +277,14 @@ exports.deleteAllUsers = async (req, res) => {
 exports.deleteAllOtps = async (req, res) => {
   try {
     await Otp.deleteMany({});
-    res.status(200).json({ success: true, message: "All OTPs deleted successfully" });
+    res
+      .status(200)
+      .json({ success: true, message: "All OTPs deleted successfully" });
   } catch (err) {
     res.status(500).json({ success: false, error: "Internal Server Error" });
   }
 };
+
 exports.getUserDetailsByEmail = async (req, res) => {
   try {
     const { email } = req.body;
@@ -356,6 +340,3 @@ exports.decryptPassword = async (req, res) => {
     res.status(500).json({ success: false, error: "Internal Server Error" });
   }
 };
-
-
-
