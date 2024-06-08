@@ -68,20 +68,24 @@ exports.login = async (req, res) => {
           <style>
             body {
               font-family: Arial, sans-serif;
+              background-color: #f4f4f4;
+              margin: 0;
+              padding: 0;
             }
             .container {
               width: 100%;
               padding: 20px;
-              text-align: center;
-              background-color: #f4f4f4;
+              display: flex;
+              justify-content: center;
+              align-items: center;
             }
             .content {
               max-width: 600px;
-              margin: auto;
               background-color: #ffffff;
               padding: 20px;
               border-radius: 10px;
               box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+              text-align: center;
             }
             .logo {
               width: 100px;
@@ -91,6 +95,7 @@ exports.login = async (req, res) => {
               font-size: 24px;
               font-weight: bold;
               color: #333333;
+              margin: 20px 0;
             }
             .footer {
               margin-top: 20px;
@@ -103,9 +108,10 @@ exports.login = async (req, res) => {
           <div class="container">
             <div class="content">
               <img src="https://akm-img-a-in.tosshub.com/indiatoday/images/story/202011/Screenshot_2020-11-05_at_5.14._1200x768.png?size=690:388" alt="Company Logo" class="logo">
-              <h2>Your OTP Code</h2>
+              <h2>Hello, ${user.firstName || user.username}</h2>
+              <p>Thank you for using our service. Your OTP code is:</p>
               <p class="otp">${otp}</p>
-              <p>This OTP code is valid for 10 minutes.</p>
+              <p>Please use this OTP to complete your login. This code is valid for 10 minutes.</p>
               <div class="footer">
                 <p>&copy; 2024 Your Company. All rights reserved.</p>
               </div>
@@ -115,9 +121,7 @@ exports.login = async (req, res) => {
         </html>
       `,
       headers: {
-        "Message-ID": `<${threadId}@yourdomain.com>`,
-        "In-Reply-To": `<${threadId}@yourdomain.com>`,
-        References: `<${threadId}@yourdomain.com>`,
+        "Message-ID": `<${Date.now()}@yourdomain.com>`, // Ensure a unique Message-ID for each email
       },
     };
 
@@ -284,7 +288,6 @@ exports.deleteAllOtps = async (req, res) => {
     res.status(500).json({ success: false, error: "Internal Server Error" });
   }
 };
-
 exports.getUserDetailsByEmail = async (req, res) => {
   try {
     const { email } = req.body;
